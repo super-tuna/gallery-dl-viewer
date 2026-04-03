@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}{{ post.author_nick or post.author_name }} — gallery-dl-viewer{% endblock %}
+
+{% block header_actions %}
+<button onclick="history.back()"
+  class="text-sm text-blue-400 hover:text-blue-300 inline-flex items-center gap-1 mr-2">
+  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+  </svg>
+  Back
+</button>
+{% endblock %}
+
+{% block content %}
+{#
+  Desktop (md+): two-column layout
+    Left  — images, independently scrollable
+    Right — post info, independently scrollable
+  Mobile: stacked (images top, info bottom), normal page scroll
+#}
+<div class="flex flex-col md:flex-row md:h-[calc(100vh-56px)] md:overflow-hidden">
+
+  <!-- Images -->
+  <div class="md:flex-1 md:min-w-0 md:overflow-y-auto p-4">
+    <div class="flex flex-col gap-2 max-w-2xl mx-auto md:max-w-none">
+      {% for m in media %}
+      <div class="bg-gray-900 rounded overflow-hidden">
+        {% if m.media_type == 'video' %}
+        <video src="/media/{{ m.id }}" class="w-full max-h-[80vh] object-contain" controls preload="metadata"></video>
+        {% else %}
+        <img src="/media/{{ m.id }}" class="w-full" loading="lazy" alt="">
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Post info -->
+  <div class="md:w-80 lg:w-96 md:shrink-0 md:overflow-y-auto md:border-l md:border-gray-800 p-4 pb-10">
+    <div class="bg-gray-900 rounded-xl p-4 space-y-3">
+
+      <!-- Author + date -->
+      <div class="flex items-start justify-between gap-2">
+        <div>
+          <div class="font-medium">{{ post.author_nick }}</div>
+          <div class="text-sm text-gray-400">@{{ post.author_name }}</div>
+        </div>
+        <div class="text-sm text-gray-400 shrink-0">
+          {{ post.date[:10] if post.date else '' }}
+        </div>
+      </div>
+
+      <!-- Content -->
+      {% if post.content %}
+      <p class="text-sm whitespace-pre-wrap leading-relaxed text-gray-100">{{ post.content }}</p>
+      {% endif %}
+
+      <!-- Hashtags -->
+      {% if tags %}
+      <div class="flex flex-wrap gap-1.5">
+        {% for tag in tags %}
+        <a href="/?tags={{ tag | urlencode }}"
+          class="text-xs bg-blue-900/50 text-blue-300 hover:bg-blue-800/70 px-2 py-0.5 rounded transition-colors">
+          #{{ tag }}
+        </a>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- Stats -->
+      <div class="flex gap-5 text-sm text-gray-400 pt-1 border-t border-gray-800">
+        {% if post.favorite_count %}
+        <span class="flex items-center gap-1">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+          </svg>
+          {{ post.favorite_count }}
+        </span>
+        {% endif %}
+        {% if post.retweet_count %}
+        <span class="flex items-center gap-1">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/>
+          </svg>
+          {{ post.retweet_count }}
+        </span>
+        {% endif %}
+        {% if post.view_count %}
+        <span class="flex items-center gap-1">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+          </svg>
+          {{ post.view_count }}
+        </span>
+        {% endif %}
+        <span class="ml-auto text-xs text-gray-500">{{ post.category }}/{{ post.subcategory }}</span>
+      </div>
+
+      <!-- Original post link -->
+      {% if post.category in ('twitter', 'x') %}
+      <a href="https://x.com/{{ post.author_name }}/status/{{ post.tweet_id }}"
+         target="_blank" rel="noopener noreferrer"
+         class="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 transition-colors pt-1">
+        <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+        </svg>
+        元ポストを開く
+      </a>
+      {% endif %}
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}

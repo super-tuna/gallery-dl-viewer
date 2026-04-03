@@ -1,0 +1,17 @@
+# gallery-dl-viewer configuration
+# Copy to config.yaml and edit
+
+# Directories containing gallery-dl downloaded files (with sidecar JSONs).
+# Docker: use /data (mounted via GALLERY_DATA_DIR in .env or docker-compose override)
+# Direct install: use the actual path on your machine
+data_dirs:
+  - /data
+
+# SQLite index database path
+# Docker: keep as /app/index.db (mounted as ./index.db on the host)
+# Direct install: use a local path, e.g. ./index.db
+db_path: /app/index.db
+
+# Server settings
+host: 0.0.0.0
+port: 8090

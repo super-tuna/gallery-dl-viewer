@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block title %}
+  {%- if filters.tags %}#{{ filters.tags }} — {% endif -%}
+  gallery-dl-viewer
+{% endblock %}
+
+{% block sidebar %}
+<!-- Sidebar: fixed on mobile (slide-over), sticky on desktop -->
+<aside id="sidebar"
+  class="fixed md:sticky top-14 right-0 md:right-auto md:left-0 z-40
+         w-64 h-[calc(100vh-56px)]
+         flex flex-col
+         bg-gray-900 border-l md:border-l-0 md:border-r border-gray-800
+         translate-x-full md:translate-x-0
+         transition-transform duration-200">
+
+  <form id="filter-form" class="flex flex-col h-full p-4 gap-4 overflow-hidden" method="get" action="/">
+
+    <!-- Sort order -->
+    <div>
+      <label class="text-xs text-gray-400 uppercase tracking-wider">Sort</label>
+      <div id="order-toggle" class="mt-1 flex rounded overflow-hidden border border-gray-700 text-sm">
+        <label class="order-label flex-1 flex items-center justify-center gap-1 py-1.5 cursor-pointer">
+          <input type="radio" name="order" value="desc" class="hidden"
+            {% if filters.order != 'asc' %}checked{% endif %}>
+          ↓ Newest
+        </label>
+        <label class="order-label flex-1 flex items-center justify-center gap-1 py-1.5 cursor-pointer border-l border-gray-700">
+          <input type="radio" name="order" value="asc" class="hidden"
+            {% if filters.order == 'asc' %}checked{% endif %}>
+          ↑ Oldest
+        </label>
+      </div>
+    </div>
+
+    <!-- Favorites -->
+    <div>
+      <label class="text-xs text-gray-400 uppercase tracking-wider">Favorites</label>
+      <div class="mt-1">
+        <label class="flex items-center gap-2 px-1 py-0.5 rounded cursor-pointer hover:bg-gray-800">
+          <input type="checkbox" name="fav_only" value="1"
+            {% if filters.fav_only %}checked{% endif %}
+            class="accent-red-500 shrink-0">
+          <span class="text-sm text-red-400">♥ Posts only</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Keyword -->
+    <div>
+      <label class="text-xs text-gray-400 uppercase tracking-wider">Keyword</label>
+      <input type="text" name="q" value="{{ filters.q }}"
+        placeholder="Search..."
+        class="mt-1 w-full bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-sm
+               focus:outline-none focus:border-blue-500 placeholder-gray-500">
+    </div>
+
+    <!-- Date range -->
+    <div>
+      <label class="text-xs text-gray-400 uppercase tracking-wider">Date range</label>
+      <div class="mt-1 flex flex-col gap-1">
+        <input type="date" name="from_date" value="{{ filters.from_date }}"
+          {% if min_date %}min="{{ min_date }}"{% endif %}
+          {% if max_date %}max="{{ max_date }}"{% endif %}
+          class="bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm
+                 focus:outline-none focus:border-blue-500 text-gray-100">
+        <input type="date" name="to_date" value="{{ filters.to_date }}"
+          {% if min_date %}min="{{ min_date }}"{% endif %}
+          {% if max_date %}max="{{ max_date }}"{% endif %}
+          class="bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm
+                 focus:outline-none focus:border-blue-500 text-gray-100">
+      </div>
+    </div>
+
+    <!-- Hashtag list -->
+    <div class="flex-1 flex flex-col min-h-0">
+      <div class="flex items-center justify-between mb-1">
+        <label class="text-xs text-gray-400 uppercase tracking-wider">Hashtags</label>
+        <div class="flex items-center gap-1">
+          <input type="checkbox" name="fav_tags_only" value="1"
+            {% if filters.fav_tags_only %}checked{% endif %}
+            class="accent-yellow-400 hidden">
+          <span id="fav-tags-toggle"
+            class="text-xs px-1.5 py-0.5 rounded border transition-colors cursor-pointer
+                   {% if filters.fav_tags_only %}border-yellow-400 text-yellow-400{% else %}border-gray-600 text-gray-500{% endif %}">
+            ★ only
+          </span>
+        </div>
+      </div>
+      <div class="tag-list flex-1 overflow-y-auto flex flex-col gap-0.5 pr-1">
+        {% set active_tags = filters.tags.split(",") | map("trim") | select | list %}
+        {% for tag in all_tags %}
+        <div class="fav-tag-item flex items-center px-1 py-0.5 rounded hover:bg-gray-800 group">
+          <label class="flex items-center gap-2 flex-1 min-w-0 cursor-pointer">
+            <input type="checkbox" name="tags_check" value="{{ tag.tag }}"
+              {% if tag.tag in active_tags %}checked{% endif %}
+              class="accent-blue-500 shrink-0">
+            <span class="text-sm group-hover:text-blue-300 truncate">#{{ tag.tag }}</span>
+            <span class="text-xs text-gray-500 ml-auto shrink-0 mr-1">{{ tag.cnt }}</span>
+          </label>
+          <button type="button"
+                  class="fav-tag-btn shrink-0 text-sm leading-none transition-colors
+                         {% if tag.is_fav %}text-yellow-400{% else %}text-gray-600 hover:text-yellow-400{% endif %}"
+                  data-tag="{{ tag.tag }}"
+                  data-fav="{{ 'true' if tag.is_fav else 'false' }}">
+            {{ '★' if tag.is_fav else '☆' }}
+          </button>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="flex flex-col gap-2">
+      <button type="submit"
+        class="bg-blue-600 hover:bg-blue-700 text-white rounded px-4 py-2 text-sm font-medium transition-colors">
+        Apply
+      </button>
+      <a href="/" class="text-center text-xs text-gray-400 hover:text-gray-200 py-1">Reset</a>
+    </div>
+
+  </form>
+</aside>
+{% endblock %}
+
+{% block content %}
+<div class="p-3">
+
+  <!-- Active filters display -->
+  {% if filters.tags or filters.q or filters.from_date or filters.to_date or filters.fav_only %}
+  <div class="mb-3 flex flex-wrap gap-2 items-center text-sm text-gray-400">
+    <span>Filters:</span>
+    {% if filters.fav_only %}<span class="bg-red-900/40 text-red-400 px-2 py-0.5 rounded">♥ Favorites</span>{% endif %}
+    {% if filters.tags %}
+      {% for tag in filters.tags.split(",") %}
+        {% if tag.strip() %}
+        <span class="bg-blue-900/60 text-blue-300 px-2 py-0.5 rounded">#{{ tag.strip() }}</span>
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+    {% if filters.q %}<span class="bg-gray-800 px-2 py-0.5 rounded">"{{ filters.q }}"</span>{% endif %}
+    {% if filters.from_date %}<span class="bg-gray-800 px-2 py-0.5 rounded">from {{ filters.from_date }}</span>{% endif %}
+    {% if filters.to_date %}<span class="bg-gray-800 px-2 py-0.5 rounded">to {{ filters.to_date }}</span>{% endif %}
+  </div>
+  {% endif %}
+
+  <!-- Image grid -->
+  <div id="grid"
+    class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-1.5">
+
+    {% for item in items %}
+    <a href="/post/{{ item.tweet_id }}"
+      data-date="{{ item.date[:10] if item.date else '' }}"
+      class="block relative group bg-gray-900 rounded overflow-hidden">
+      <div class="aspect-square bg-gray-800">
+        {% if item.media_type == 'video' %}
+        <video src="/media/{{ item.id }}"
+          class="w-full h-full object-cover"
+          muted loop playsinline preload="metadata"
+          onmouseenter="this.play()" onmouseleave="this.pause()">
+        </video>
+        {% else %}
+        <img src="/media/{{ item.id }}"
+          class="w-full h-full object-cover"
+          loading="lazy" alt=""
+          onerror="onImgError(this)">
+        {% endif %}
+      </div>
+      <!-- Hover overlay -->
+      <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent
+                  opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex flex-col justify-end p-2
+                  pointer-events-none">
+        <div class="text-xs text-white font-medium truncate">{{ item.author_nick or item.author_name }}</div>
+        <div class="text-xs text-gray-300">{{ item.date[:10] if item.date else '' }}</div>
+      </div>
+      <!-- Favorite button -->
+      <button type="button"
+              class="fav-btn absolute top-1.5 left-1.5 drop-shadow transition-opacity duration-150
+                     {% if item.id in fav_media_ids %}text-red-500{% else %}text-white opacity-0 group-hover:opacity-70{% endif %}"
+              data-media-id="{{ item.id }}">
+        {% if item.id in fav_media_ids %}
+        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+        {% else %}
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+        {% endif %}
+      </button>
+      <!-- Video badge -->
+      {% if item.media_type == 'video' %}
+      <div class="absolute top-1.5 right-1.5 bg-black/70 rounded px-1 py-0.5 text-xs text-gray-300">▸</div>
+      {% endif %}
+    </a>
+    {% endfor %}
+
+  </div>
+
+  <!-- Infinite scroll sentinel -->
+  <div id="sentinel" class="h-10 mt-4"></div>
+  <div id="loading" class="hidden text-center py-4 text-gray-400 text-sm">Loading...</div>
+  <div id="no-more" class="hidden text-center py-6 text-gray-600 text-sm">All items loaded</div>
+
+</div>
+
+<!-- Timeline scrubber (shown by JS when date range is available) -->
+<div id="tl-scrubber"
+     style="position:fixed;right:0;top:56px;bottom:0;width:200px;z-index:30;pointer-events:none;display:none"
+     aria-hidden="true">
+  <div id="tl-track"
+       style="position:absolute;right:6px;top:10px;bottom:10px;width:4px;
+              background:rgba(75,85,99,0.45);border-radius:9999px;
+              cursor:ns-resize;pointer-events:auto">
+    <!-- Current date label (positioned by JS, extends left of track) -->
+    <div id="tl-label"
+         style="position:absolute;right:8px;top:0;transform:translateY(-50%);display:none;
+                background:#111827;border:1px solid #4b5563;color:#d1d5db;
+                font-size:11px;line-height:1.5;padding:2px 8px;border-radius:4px;
+                white-space:nowrap;box-shadow:0 2px 10px rgba(0,0,0,0.75)">
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function onImgError(img) {
+    if (!img.dataset.retried) {
+      img.dataset.retried = '1';
+      const src = img.src;
+      img.src = '';
+      setTimeout(() => { img.src = src; }, 2000);
+    } else {
+      img.style.display = 'none';
+    }
+  }
+
+  const FILTERS = {
+    tags:         {{ filters.tags         | tojson }},
+    q:            {{ filters.q            | tojson }},
+    from_date:    {{ filters.from_date    | tojson }},
+    to_date:      {{ filters.to_date      | tojson }},
+    order:        {{ filters.order        | tojson }},
+    fav_only:     {{ filters.fav_only     | tojson }},
+    fav_tags_only:{{ filters.fav_tags_only| tojson }},
+  };
+  const INITIAL_COUNT = {{ items | length }};
+  const FAV_MEDIA_IDS = new Set({{ fav_media_ids | tojson }});
+  const DATE_MIN = {{ min_date | tojson }};
+  const DATE_MAX = {{ max_date | tojson }};
+</script>
+<script src="/static/app.js"></script>
+{% endblock %}

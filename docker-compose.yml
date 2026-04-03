@@ -1,0 +1,28 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8090:8090"
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - ${GALLERY_CONFIG_PATH:?Set GALLERY_CONFIG_PATH to your config.yaml path}:/app/config.yaml:ro
+      - ${GALLERY_DB_PATH:?Set GALLERY_DB_PATH to your index.db path}:/app/index.db
+      - type: bind
+        source: ${GALLERY_DATA_DIR:?Set GALLERY_DATA_DIR to your gallery-dl download directory}
+        target: /data
+        read_only: true
+
+  indexer:
+    build: .
+    profiles: ["indexer"]
+    command: ["python", "indexer.py"]
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - ${GALLERY_CONFIG_PATH:?Set GALLERY_CONFIG_PATH to your config.yaml path}:/app/config.yaml:ro
+      - ${GALLERY_DB_PATH:?Set GALLERY_DB_PATH to your index.db path}:/app/index.db
+      - type: bind
+        source: ${GALLERY_DATA_DIR:?Set GALLERY_DATA_DIR to your gallery-dl download directory}
+        target: /data
+        read_only: true
