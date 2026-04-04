@@ -30,6 +30,20 @@ gallery-dl must be configured to write sidecar JSON alongside each downloaded fi
 - Scraping assistance
 - Windows (WSL is likely to work but untested)
 
+## Screenshots
+
+### Desktop
+
+| Gallery | Tag filter | Post detail |
+|---|---|---|
+| ![Gallery view](docs/screenshots/01-1.png) | ![Tag filter](docs/screenshots/01-2.png) | ![Post detail](docs/screenshots/01-3.png) |
+
+### Mobile
+
+| Gallery | Tag filter | Post detail | Filter sidebar |
+|---|---|---|---|
+| ![Mobile gallery](docs/screenshots/02-1.png) | ![Mobile tag filter](docs/screenshots/02-2.png) | ![Mobile post detail](docs/screenshots/02-3.png) | ![Mobile sidebar](docs/screenshots/02-4.png) |
+
 ## Features
 
 - Browse images and videos downloaded by gallery-dl
