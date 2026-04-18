@@ -4,14 +4,14 @@ A lightweight web viewer for [gallery-dl](https://github.com/mikf/gallery-dl) ar
 
 Indexes gallery-dl's sidecar JSON metadata into SQLite and serves a fast, browsable gallery — without duplicating your original files.
 
-> **Platform support**: Currently **X/Twitter only**. Multi-platform support (Instagram, TikTok, Tumblr, …) is planned — see [Roadmap](#roadmap) below.
+**Supported platforms**: X/Twitter, Instagram, TikTok, Tumblr
 
 ## Scope
 
 ### What this tool does
 
 - Browse and organize images and videos you have already downloaded with [gallery-dl](https://github.com/mikf/gallery-dl)
-- Navigate your archive by hashtags, keyword search, date range, and favorites
+- Navigate your archive by hashtags, keyword search, date range, platform, and favorites
 - Serve your original files directly — no duplication, no transcoding, minimal storage overhead
 
 ### What this tool does NOT do
@@ -46,9 +46,10 @@ gallery-dl must be configured to write sidecar JSON alongside each downloaded fi
 
 ## Features
 
-- Browse images and videos downloaded by gallery-dl
-- Post detail page with author info, text, hashtags, and X/Twitter engagement stats
-- Filter by hashtags, keyword search, and date range
+- Browse images and videos downloaded by gallery-dl — X/Twitter, Instagram, TikTok, Tumblr
+- Platform badge on every thumbnail; filter by platform in the sidebar
+- Post detail page with author info, text, hashtags, and original post link per platform
+- Filter by hashtags, keyword search, date range, and platform
 - Sort newest or oldest first
 - Favorites — per-image hearts and per-tag stars; filter to favorites only
 - Infinite scroll
@@ -207,13 +208,13 @@ This creates a `.json` file alongside each downloaded media file containing post
 
 ## Performance
 
-Measured on a running instance (systemd, uvicorn single worker):
+Measured on a running instance (Docker, uvicorn single worker):
 
 | Metric | Value |
 |---|---|
-| Posts indexed | ~6,000 |
-| Media files indexed | ~10,500 |
-| SQLite DB size | ~7 MB |
+| Posts indexed | ~14,000 (4 platforms) |
+| Media files indexed | ~25,000 |
+| SQLite DB size | ~12 MB |
 | Process RSS | ~75 MB |
 
 ## Roadmap
@@ -224,11 +225,15 @@ Measured on a running instance (systemd, uvicorn single worker):
 - Portable DB (relative file paths)
 - README and public release prep
 
-### Phase 2 — Multi-platform support
+### Phase 2 — Multi-platform support ✓
 
-Target platforms: Instagram, Tumblr, TikTok
+Added support for Instagram, Tumblr, and TikTok alongside X/Twitter.
 
-gallery-dl's sidecar JSON includes a `category` field (`"twitter"`, `"instagram"`, `"tiktok"`, `"tumblr"`, …). The indexer will use this to extract the correct post ID per platform and drop the Twitter-specific `tweet_id` assumption throughout the codebase.
+- Platform-aware post ID extraction (`tweet_id`, `shortcode`, `id`) per `category` field in sidecar JSON
+- Platform-specific author, content, and stats parsing
+- Platform badge (icon) on every gallery thumbnail
+- Platform filter in the sidebar
+- Per-platform original post links on the detail page
 
 ### Phase 3 — LoRA workflow features
 
