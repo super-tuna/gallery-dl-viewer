@@ -172,14 +172,14 @@
         <div class="text-xs text-white font-medium truncate">${escHtml(nick)}</div>
         <div class="text-xs text-gray-300">${escHtml(date)}</div>
       </div>
-      <div class="absolute top-1.5 left-1.5 pointer-events-none drop-shadow z-10">
-        ${platformIconHtml(item.category || "")}
+      <div class="absolute top-1.5 left-1.5 flex items-center gap-1 z-10 drop-shadow">
+        <div class="pointer-events-none shrink-0">${platformIconHtml(item.category || "")}</div>
+        <button type="button"
+                class="fav-btn shrink-0 p-0 leading-none transition-opacity duration-150 ${heartCls}"
+                data-media-id="${item.id}">
+          ${heartSvg}
+        </button>
       </div>
-      <button type="button"
-              class="fav-btn absolute top-1.5 left-6 drop-shadow transition-opacity duration-150 ${heartCls}"
-              data-media-id="${item.id}">
-        ${heartSvg}
-      </button>
       ${badgeHtml}
     `;
     return a;
