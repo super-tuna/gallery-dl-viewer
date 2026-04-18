@@ -68,7 +68,7 @@
     </div>
 
     <!-- Platform filter -->
-    {% if all_categories | length > 1 %}
+    {% if all_categories %}
     <div>
       <label class="text-xs text-gray-400 uppercase tracking-wider">Platform</label>
       <div class="mt-1 flex flex-col gap-0.5">
@@ -225,12 +225,12 @@
         <div class="text-xs text-gray-300">{{ item.date[:10] if item.date else '' }}</div>
       </div>
       <!-- Platform icon (top-left, always visible) -->
-      <div class="absolute top-1.5 left-1.5 pointer-events-none drop-shadow">
+      <div class="absolute top-1.5 left-1.5 pointer-events-none drop-shadow z-10">
         {{ platform_icon(item.category) }}
       </div>
-      <!-- Favorite button (overlays platform icon on hover) -->
+      <!-- Favorite button (right of platform icon) -->
       <button type="button"
-              class="fav-btn absolute top-1.5 left-1.5 drop-shadow transition-opacity duration-150
+              class="fav-btn absolute top-1.5 left-6 drop-shadow transition-opacity duration-150
                      {% if item.id in fav_media_ids %}text-red-500{% else %}text-white opacity-0 group-hover:opacity-100{% endif %}"
               data-media-id="{{ item.id }}">
         {% if item.id in fav_media_ids %}

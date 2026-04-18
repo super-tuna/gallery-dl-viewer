@@ -37,10 +37,10 @@
     btn.innerHTML = favorited ? HEART_FILLED_SM : HEART_OUTLINE_SM;
     if (favorited) {
       btn.classList.add("text-red-500");
-      btn.classList.remove("text-white", "opacity-0", "group-hover:opacity-100");
+      btn.classList.remove("text-white", "opacity-0");
     } else {
       btn.classList.remove("text-red-500");
-      btn.classList.add("text-white", "opacity-0", "group-hover:opacity-100");
+      btn.classList.add("text-white", "opacity-0");
     }
   }
 
@@ -172,11 +172,11 @@
         <div class="text-xs text-white font-medium truncate">${escHtml(nick)}</div>
         <div class="text-xs text-gray-300">${escHtml(date)}</div>
       </div>
-      <div class="absolute top-1.5 left-1.5 pointer-events-none drop-shadow">
+      <div class="absolute top-1.5 left-1.5 pointer-events-none drop-shadow z-10">
         ${platformIconHtml(item.category || "")}
       </div>
       <button type="button"
-              class="fav-btn absolute top-1.5 left-1.5 drop-shadow transition-opacity duration-150 ${heartCls}"
+              class="fav-btn absolute top-1.5 left-6 drop-shadow transition-opacity duration-150 ${heartCls}"
               data-media-id="${item.id}">
         ${heartSvg}
       </button>
