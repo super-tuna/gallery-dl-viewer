@@ -65,11 +65,14 @@ async def gallery(
     order: str = Query(default="desc"),
     fav_only: bool = Query(default=False),
     fav_tags_only: bool = Query(default=False),
+    categories: str = Query(default=""),
 ):
     tag_list = [t.strip() for t in tags.split(",") if t.strip()]
+    cat_list = [c.strip() for c in categories.split(",") if c.strip()]
     con = get_con()
     try:
         tag_list_norm = tag_list or None
+        cat_list_norm = cat_list or None
         q_norm = q or None
         from_norm = from_date or None
         to_norm = to_date or None
@@ -83,6 +86,7 @@ async def gallery(
             to_date=to_norm,
             order=order_norm,
             fav_only=fav_only,
+            categories=cat_list_norm,
             offset=0,
             limit=24,
         )
@@ -93,15 +97,20 @@ async def gallery(
             from_date=from_norm,
             to_date=to_norm,
             fav_tags_only=fav_tags_only,
+            categories=cat_list_norm,
         )
-        min_date, max_date = db.get_date_range(con, tags=tag_list_norm, q=q_norm)
+        min_date, max_date = db.get_date_range(
+            con, tags=tag_list_norm, q=q_norm, categories=cat_list_norm
+        )
         fav_media_ids = db.get_favorite_media_ids(con)
+        all_categories = db.get_all_categories(con)
         return templates.TemplateResponse(
             request=request,
             name="gallery.html",
             context={
                 "items": [dict(i) for i in items],
                 "all_tags": [dict(t) for t in all_tags],
+                "all_categories": all_categories,
                 "min_date": min_date or "",
                 "max_date": max_date or "",
                 "fav_media_ids": list(fav_media_ids),
@@ -113,6 +122,7 @@ async def gallery(
                     "order": order_norm,
                     "fav_only": fav_only,
                     "fav_tags_only": fav_tags_only,
+                    "categories": categories,
                 },
             },
         )
@@ -152,10 +162,12 @@ async def api_gallery(
     to_date: str = Query(default=""),
     order: str = Query(default="desc"),
     fav_only: bool = Query(default=False),
+    categories: str = Query(default=""),
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=24, le=100),
 ):
     tag_list = [t.strip() for t in tags.split(",") if t.strip()]
+    cat_list = [c.strip() for c in categories.split(",") if c.strip()]
     con = get_con()
     try:
         items = db.get_gallery(
@@ -166,6 +178,7 @@ async def api_gallery(
             to_date=to_date or None,
             order="asc" if order == "asc" else "desc",
             fav_only=fav_only,
+            categories=cat_list or None,
             offset=offset,
             limit=limit,
         )

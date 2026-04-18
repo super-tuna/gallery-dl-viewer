@@ -1,5 +1,25 @@
 {% extends "base.html" %}
 
+{% macro platform_icon(category) %}
+{% if category == 'twitter' %}
+<span title="X (Twitter)" class="inline-flex items-center justify-center w-4 h-4 rounded bg-black text-white shrink-0">
+  <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+</span>
+{% elif category == 'instagram' %}
+<span title="Instagram" class="inline-flex items-center justify-center w-4 h-4 rounded text-white shrink-0" style="background:linear-gradient(135deg,#f09433 0%,#e6683c 25%,#dc2743 50%,#cc2366 75%,#bc1888 100%)">
+  <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+</span>
+{% elif category == 'tiktok' %}
+<span title="TikTok" class="inline-flex items-center justify-center w-4 h-4 rounded bg-black text-white shrink-0">
+  <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.75a4.85 4.85 0 0 1-1.01-.06z"/></svg>
+</span>
+{% elif category == 'tumblr' %}
+<span title="Tumblr" class="inline-flex items-center justify-center w-4 h-4 rounded text-white text-[9px] font-bold leading-none shrink-0" style="background:#35465c">t</span>
+{% else %}
+<span class="inline-flex items-center justify-center w-4 h-4 rounded bg-gray-700 text-gray-400 text-[9px] shrink-0">?</span>
+{% endif %}
+{% endmacro %}
+
 {% block title %}
   {%- if filters.tags %}#{{ filters.tags }} — {% endif -%}
   gallery-dl-viewer
@@ -46,6 +66,27 @@
         </label>
       </div>
     </div>
+
+    <!-- Platform filter -->
+    {% if all_categories | length > 1 %}
+    <div>
+      <label class="text-xs text-gray-400 uppercase tracking-wider">Platform</label>
+      <div class="mt-1 flex flex-col gap-0.5">
+        {% set active_cats = filters.categories.split(",") | map("trim") | select | list %}
+        {% for cat in all_categories %}
+        <label class="flex items-center gap-2 px-1 py-0.5 rounded cursor-pointer hover:bg-gray-800">
+          <input type="checkbox" name="categories_check" value="{{ cat }}"
+            {% if cat in active_cats %}checked{% endif %}
+            class="accent-blue-500 shrink-0">
+          <span class="text-sm flex items-center gap-1.5">
+            {{ platform_icon(cat) }}
+            {{ cat | capitalize }}
+          </span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
 
     <!-- Keyword -->
     <div>
@@ -128,10 +169,19 @@
 <div class="p-3">
 
   <!-- Active filters display -->
-  {% if filters.tags or filters.q or filters.from_date or filters.to_date or filters.fav_only %}
+  {% if filters.tags or filters.q or filters.from_date or filters.to_date or filters.fav_only or filters.categories %}
   <div class="mb-3 flex flex-wrap gap-2 items-center text-sm text-gray-400">
     <span>Filters:</span>
     {% if filters.fav_only %}<span class="bg-red-900/40 text-red-400 px-2 py-0.5 rounded">♥ Favorites</span>{% endif %}
+    {% if filters.categories %}
+      {% for cat in filters.categories.split(",") %}
+        {% if cat.strip() %}
+        <span class="bg-gray-800 px-2 py-0.5 rounded flex items-center gap-1">
+          {{ platform_icon(cat.strip()) }}{{ cat.strip() | capitalize }}
+        </span>
+        {% endif %}
+      {% endfor %}
+    {% endif %}
     {% if filters.tags %}
       {% for tag in filters.tags.split(",") %}
         {% if tag.strip() %}
@@ -174,15 +224,19 @@
         <div class="text-xs text-white font-medium truncate">{{ item.author_nick or item.author_name }}</div>
         <div class="text-xs text-gray-300">{{ item.date[:10] if item.date else '' }}</div>
       </div>
-      <!-- Favorite button -->
+      <!-- Platform icon (top-left, always visible) -->
+      <div class="absolute top-1.5 left-1.5 pointer-events-none drop-shadow">
+        {{ platform_icon(item.category) }}
+      </div>
+      <!-- Favorite button (overlays platform icon on hover) -->
       <button type="button"
               class="fav-btn absolute top-1.5 left-1.5 drop-shadow transition-opacity duration-150
-                     {% if item.id in fav_media_ids %}text-red-500{% else %}text-white opacity-0 group-hover:opacity-70{% endif %}"
+                     {% if item.id in fav_media_ids %}text-red-500{% else %}text-white opacity-0 group-hover:opacity-100{% endif %}"
               data-media-id="{{ item.id }}">
         {% if item.id in fav_media_ids %}
-        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
         {% else %}
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
         {% endif %}
       </button>
       <!-- Video badge -->
@@ -241,6 +295,7 @@
     order:        {{ filters.order        | tojson }},
     fav_only:     {{ filters.fav_only     | tojson }},
     fav_tags_only:{{ filters.fav_tags_only| tojson }},
+    categories:   {{ filters.categories   | tojson }},
   };
   const INITIAL_COUNT = {{ items | length }};
   const FAV_MEDIA_IDS = new Set({{ fav_media_ids | tojson }});

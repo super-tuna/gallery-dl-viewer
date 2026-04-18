@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS post_tags (
 );
 
 CREATE INDEX IF NOT EXISTS idx_posts_date        ON posts(date);
+CREATE INDEX IF NOT EXISTS idx_posts_category    ON posts(category);
 CREATE INDEX IF NOT EXISTS idx_media_tweet_id    ON media(tweet_id);
 CREATE INDEX IF NOT EXISTS idx_post_tags_tweet   ON post_tags(tweet_id);
 CREATE INDEX IF NOT EXISTS idx_post_tags_tag     ON post_tags(tag_id);
@@ -85,8 +86,78 @@ def connect(db_path: str):
         con.close()
 
 
+def extract_post_id(data: dict) -> str:
+    """Extract the platform-specific post ID from a sidecar JSON dict."""
+    category = (data.get("category") or "").lower()
+    if category == "twitter":
+        return str(data.get("tweet_id", ""))
+    elif category == "instagram":
+        return str(data.get("shortcode", ""))
+    elif category in ("tiktok", "tumblr"):
+        return str(data.get("id", ""))
+    # fallback: try common fields in order
+    for field in ("tweet_id", "id", "shortcode"):
+        v = data.get(field)
+        if v:
+            return str(v)
+    return ""
+
+
 def upsert_post(con: sqlite3.Connection, data: dict):
-    author = data.get("author") or data.get("user") or {}
+    category = (data.get("category") or "").lower()
+    post_id = extract_post_id(data)
+
+    if category == "twitter":
+        author = data.get("author") or data.get("user") or {}
+        author_name = author.get("name", "")
+        author_nick = author.get("nick", "")
+        content = data.get("content", "")
+        source_query = data.get("search", "") or author_name
+        favorite_count = data.get("favorite_count", 0) or 0
+        retweet_count = data.get("retweet_count", 0) or 0
+        reply_count = data.get("reply_count", 0) or 0
+        view_count = data.get("view_count", 0) or 0
+    elif category == "instagram":
+        owner = data.get("owner") or {}
+        author_name = owner.get("username", "")
+        author_nick = owner.get("full_name", "") or author_name
+        content = data.get("description", "")
+        source_query = author_name
+        favorite_count = data.get("likes", 0) or 0
+        retweet_count = 0
+        reply_count = 0
+        view_count = data.get("views", 0) or 0
+    elif category == "tiktok":
+        author = data.get("author") or {}
+        author_name = author.get("uniqueId", "")
+        author_nick = author.get("nickname", "") or author_name
+        content = data.get("desc", "")
+        source_query = author_name
+        favorite_count = 0
+        retweet_count = 0
+        reply_count = 0
+        view_count = 0
+    elif category == "tumblr":
+        author_name = data.get("blog_name", "")
+        blog = data.get("blog") or {}
+        author_nick = blog.get("title", "") or author_name
+        content = data.get("summary", "") or ""
+        source_query = author_name
+        favorite_count = data.get("note_count", 0) or 0
+        retweet_count = 0
+        reply_count = 0
+        view_count = 0
+    else:
+        author = data.get("author") or data.get("user") or {}
+        author_name = author.get("name", "")
+        author_nick = author.get("nick", "")
+        content = data.get("content", "")
+        source_query = data.get("search", "") or author_name
+        favorite_count = data.get("favorite_count", 0) or 0
+        retweet_count = data.get("retweet_count", 0) or 0
+        reply_count = data.get("reply_count", 0) or 0
+        view_count = data.get("view_count", 0) or 0
+
     con.execute(
         """
         INSERT OR REPLACE INTO posts
@@ -96,26 +167,38 @@ def upsert_post(con: sqlite3.Connection, data: dict):
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
-            str(data.get("tweet_id", "")),
-            author.get("name", ""),
-            author.get("nick", ""),
-            data.get("content", ""),
+            post_id,
+            author_name,
+            author_nick,
+            content,
             data.get("date", ""),
             data.get("category", ""),
             data.get("subcategory", ""),
-            data.get("search", "") or author.get("name", ""),
+            source_query,
             data.get("lang", ""),
-            data.get("favorite_count", 0),
-            data.get("retweet_count", 0),
-            data.get("reply_count", 0),
-            data.get("view_count", 0),
+            favorite_count,
+            retweet_count,
+            reply_count,
+            view_count,
             1 if data.get("sensitive") else 0,
         ),
     )
 
 
-def upsert_media(con: sqlite3.Connection, tweet_id: str, file_path: str, data: dict) -> bool:
+def upsert_media(con: sqlite3.Connection, post_id: str, file_path: str, data: dict) -> bool:
     """Returns True if a new row was inserted, False if already existed."""
+    category = (data.get("category") or "").lower()
+
+    if category == "tiktok":
+        video = data.get("video") or {}
+        width = video.get("width", 0)
+        height = video.get("height", 0)
+        media_type = "video"
+    else:
+        width = data.get("width", 0)
+        height = data.get("height", 0)
+        media_type = data.get("type", "photo")
+
     cur = con.execute(
         """
         INSERT OR IGNORE INTO media
@@ -123,13 +206,13 @@ def upsert_media(con: sqlite3.Connection, tweet_id: str, file_path: str, data: d
         VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
         (
-            tweet_id,
+            post_id,
             file_path,
-            data.get("width", 0),
-            data.get("height", 0),
-            data.get("type", "photo"),
+            width,
+            height,
+            media_type,
             data.get("num", 1),
-            data.get("count", 1),
+            data.get("count") or 1,
         ),
     )
     return cur.rowcount > 0
@@ -154,6 +237,7 @@ def get_gallery(
     to_date: str | None = None,
     order: str = "desc",
     fav_only: bool = False,
+    categories: list | None = None,
     offset: int = 0,
     limit: int = 24,
 ) -> list[sqlite3.Row]:
@@ -176,6 +260,11 @@ def get_gallery(
         """)
         params.extend(t.lower() for t in tags)
 
+    if categories:
+        ph = ",".join("?" * len(categories))
+        conditions.append(f"p.category IN ({ph})")
+        params.extend(categories)
+
     if q:
         conditions.append("p.content LIKE ?")
         params.append(f"%{q}%")
@@ -193,7 +282,7 @@ def get_gallery(
     sql = f"""
         SELECT m.id, m.file_path, m.media_type, m.tweet_id,
                m.width, m.height, m.num,
-               p.author_name, p.author_nick, p.date, p.content
+               p.author_name, p.author_nick, p.date, p.content, p.category
         FROM media m
         JOIN posts p ON m.tweet_id = p.tweet_id
         {where}
@@ -228,6 +317,7 @@ def get_all_tags(
     from_date: str | None = None,
     to_date: str | None = None,
     fav_tags_only: bool = False,
+    categories: list | None = None,
     limit: int = 200,
 ) -> list[sqlite3.Row]:
     conditions: list[str] = []
@@ -248,6 +338,11 @@ def get_all_tags(
             )
         """)
         params.extend(t.lower() for t in tags)
+
+    if categories:
+        ph = ",".join("?" * len(categories))
+        conditions.append(f"p.category IN ({ph})")
+        params.extend(categories)
 
     if q:
         conditions.append("p.content LIKE ?")
@@ -279,10 +374,18 @@ def get_all_tags(
     return con.execute(sql, params).fetchall()
 
 
+def get_all_categories(con: sqlite3.Connection) -> list[str]:
+    rows = con.execute(
+        "SELECT DISTINCT category FROM posts WHERE category != '' ORDER BY category"
+    ).fetchall()
+    return [r["category"] for r in rows]
+
+
 def get_date_range(
     con: sqlite3.Connection,
     tags: list | None = None,
     q: str | None = None,
+    categories: list | None = None,
 ) -> tuple[str | None, str | None]:
     """Return (min_date, max_date) for posts matching tags and q (YYYY-MM-DD)."""
     conditions: list[str] = []
@@ -300,6 +403,11 @@ def get_date_range(
             )
         """)
         params.extend(t.lower() for t in tags)
+
+    if categories:
+        ph = ",".join("?" * len(categories))
+        conditions.append(f"p.category IN ({ph})")
+        params.extend(categories)
 
     if q:
         conditions.append("p.content LIKE ?")

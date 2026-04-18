@@ -21,6 +21,16 @@ logger = logging.getLogger(__name__)
 MEDIA_SUFFIXES = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".mp4", ".webm", ".mov"}
 
 
+def extract_hashtags(data: dict) -> list:
+    """Extract hashtag list from sidecar JSON, platform-aware."""
+    category = (data.get("category") or "").lower()
+    if category == "twitter":
+        return data.get("hashtags") or []
+    elif category == "tumblr":
+        return data.get("tags") or []
+    return []
+
+
 def index_dir(con: sqlite3.Connection, data_dir: Path, verbose: bool = False) -> tuple[int, int]:
     added = skipped = 0
 
@@ -38,15 +48,15 @@ def index_dir(con: sqlite3.Connection, data_dir: Path, verbose: bool = False) ->
             skipped += 1
             continue
 
-        tweet_id = str(data.get("tweet_id", ""))
-        if not tweet_id or tweet_id == "0":
-            logger.debug("skip %s: no tweet_id", json_path.name)
+        post_id = db.extract_post_id(data)
+        if not post_id or post_id == "0":
+            logger.debug("skip %s: no post_id", json_path.name)
             skipped += 1
             continue
 
         db.upsert_post(con, data)
-        is_new = db.upsert_media(con, tweet_id, str(media_path.relative_to(data_dir)), data)
-        db.upsert_tags(con, tweet_id, data.get("hashtags") or [])
+        is_new = db.upsert_media(con, post_id, str(media_path.relative_to(data_dir)), data)
+        db.upsert_tags(con, post_id, extract_hashtags(data))
         if is_new:
             added += 1
             logger.debug("indexed: %s", media_path.name)
