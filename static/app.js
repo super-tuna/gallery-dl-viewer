@@ -125,7 +125,7 @@
           <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.75a4.85 4.85 0 0 1-1.01-.06z"/></svg>
         </span>`;
       case "tumblr":
-        return `<span title="Tumblr" class="inline-flex items-center justify-center w-4 h-4 rounded text-white text-[9px] font-bold leading-none shrink-0" style="background:#35465c">t</span>`;
+        return `<span title="Tumblr" class="inline-flex items-center justify-center w-4 h-4 rounded text-white shrink-0" style="background:#35465c"><svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M14.563 24c-5.093 0-7.031-3.756-7.031-6.411V9.747H5.116V6.648c3.63-1.313 4.512-4.596 4.71-6.469C9.84.051 9.941 0 9.999 0h3.517v6.114h4.801v3.633h-4.82v7.47c.016 1.001.375 2.371 2.207 2.371h.09c.631-.02 1.486-.205 1.936-.419l1.156 3.425c-.436.636-2.4 1.374-4.323 1.406z"/></svg></span>`;
       default:
         return `<span class="inline-flex items-center justify-center w-4 h-4 rounded bg-gray-700 text-gray-400 text-[9px] shrink-0">?</span>`;
     }
