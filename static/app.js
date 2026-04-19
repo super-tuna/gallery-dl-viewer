@@ -333,16 +333,14 @@
     form.querySelector("input[name='q']")
       ?.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); navigateWithFilters(); } });
 
-    // Date clear buttons — clear field and navigate immediately
+    // Date clear buttons — remove param from current URL and navigate
     form.querySelectorAll(".date-clear-btn").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        const input = form.querySelector(`input[name="${btn.dataset.target}"]`);
-        if (input) {
-          input.value = "";
-          navigateWithFilters();
-        }
+        const params = new URLSearchParams(window.location.search);
+        params.delete(btn.dataset.target);
+        window.location.href = "/?" + params.toString();
       });
     });
   }
@@ -534,25 +532,27 @@
   });
 
   // Touch support
+  // passive:true on touchstart so we don't block touchmove from firing on document
   track.addEventListener("touchstart", (e) => {
     dragging = true;
     touchStartX = e.touches[0].clientX;
-    e.preventDefault();
     const pct = getTrackPct(e.touches[0].clientY);
     showLabel(pct, pctToInfo(pct).label);
-  }, { passive: false });
-  document.addEventListener("touchmove", (e) => {
+  }, { passive: true });
+  // non-passive on track so we can preventDefault to block scroll during vertical drag
+  track.addEventListener("touchmove", (e) => {
     if (!dragging) return;
     const t = e.touches[0];
-    // Cancel scrubber on horizontal swipe (e.g. sidebar-open gesture)
+    // Cancel scrubber immediately if this is a horizontal swipe
     if (Math.abs(t.clientX - touchStartX) > 15) {
       dragging = false;
       labelEl.style.display = "none";
       return;
     }
+    e.preventDefault(); // prevent page scroll while dragging scrubber vertically
     const pct = getTrackPct(t.clientY);
     showLabel(pct, pctToInfo(pct).label);
-  }, { passive: true });
+  }, { passive: false });
   document.addEventListener("touchend", (e) => {
     if (!dragging) return;
     dragging = false;
