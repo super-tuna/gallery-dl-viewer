@@ -31,7 +31,7 @@
 <!-- Sidebar: fixed on mobile (slide-over), sticky on desktop -->
 <aside id="sidebar"
   class="fixed md:sticky top-14 right-0 md:right-auto md:left-0 z-40
-         w-64 h-[calc(100vh-56px)]
+         w-64 h-[calc(100svh-56px)]
          flex flex-col
          bg-gray-900 border-l md:border-l-0 md:border-r border-gray-800
          translate-x-full md:translate-x-0
@@ -103,16 +103,24 @@
     <div>
       <label class="text-xs text-gray-400 uppercase tracking-wider">Date range</label>
       <div class="mt-1 flex flex-col gap-1">
-        <input type="date" name="from_date" value="{{ filters.from_date }}"
-          {% if min_date %}min="{{ min_date }}"{% endif %}
-          {% if max_date %}max="{{ max_date }}"{% endif %}
-          class="bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm
-                 focus:outline-none focus:border-blue-500 text-gray-100">
-        <input type="date" name="to_date" value="{{ filters.to_date }}"
-          {% if min_date %}min="{{ min_date }}"{% endif %}
-          {% if max_date %}max="{{ max_date }}"{% endif %}
-          class="bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm
-                 focus:outline-none focus:border-blue-500 text-gray-100">
+        <div class="flex items-center gap-1">
+          <input type="date" name="from_date" value="{{ filters.from_date }}"
+            {% if min_date %}min="{{ min_date }}"{% endif %}
+            {% if max_date %}max="{{ max_date }}"{% endif %}
+            class="flex-1 min-w-0 bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm
+                   focus:outline-none focus:border-blue-500 text-gray-100">
+          <button type="button" class="date-clear-btn shrink-0 text-gray-500 hover:text-gray-300 text-lg leading-none px-1"
+                  data-target="from_date" aria-label="Clear from date">×</button>
+        </div>
+        <div class="flex items-center gap-1">
+          <input type="date" name="to_date" value="{{ filters.to_date }}"
+            {% if min_date %}min="{{ min_date }}"{% endif %}
+            {% if max_date %}max="{{ max_date }}"{% endif %}
+            class="flex-1 min-w-0 bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm
+                   focus:outline-none focus:border-blue-500 text-gray-100">
+          <button type="button" class="date-clear-btn shrink-0 text-gray-500 hover:text-gray-300 text-lg leading-none px-1"
+                  data-target="to_date" aria-label="Clear to date">×</button>
+        </div>
       </div>
     </div>
 

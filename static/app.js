@@ -332,6 +332,14 @@
     // Keyword: navigate on Enter key
     form.querySelector("input[name='q']")
       ?.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); navigateWithFilters(); } });
+
+    // Date clear buttons
+    form.querySelectorAll(".date-clear-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const input = form.querySelector(`input[name="${btn.dataset.target}"]`);
+        if (input) input.value = "";
+      });
+    });
   }
 
   // -------------------------------------------------------------------------
@@ -492,6 +500,7 @@
   }
 
   let dragging = false;
+  let touchStartX = 0;
 
   track.addEventListener("mouseenter", () => clearTimeout(hideTimer));
   track.addEventListener("mouseleave", () => { if (!dragging) scheduleHide(400); });
@@ -522,6 +531,7 @@
   // Touch support
   track.addEventListener("touchstart", (e) => {
     dragging = true;
+    touchStartX = e.touches[0].clientX;
     e.preventDefault();
     const pct = getTrackPct(e.touches[0].clientY);
     showLabel(pct, pctToInfo(pct).label);
@@ -534,7 +544,10 @@
   document.addEventListener("touchend", (e) => {
     if (!dragging) return;
     dragging = false;
-    navigateToDate(pctToInfo(getTrackPct(e.changedTouches[0].clientY)));
+    const t = e.changedTouches[0];
+    // Ignore horizontal swipe gestures (e.g. sidebar open swipe from edge)
+    if (Math.abs(t.clientX - touchStartX) > 30) return;
+    navigateToDate(pctToInfo(getTrackPct(t.clientY)));
   });
 
   // ---- Navigate to a date ----
