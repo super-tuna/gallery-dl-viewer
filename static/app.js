@@ -333,11 +333,16 @@
     form.querySelector("input[name='q']")
       ?.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); navigateWithFilters(); } });
 
-    // Date clear buttons
+    // Date clear buttons — clear field and navigate immediately
     form.querySelectorAll(".date-clear-btn").forEach((btn) => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         const input = form.querySelector(`input[name="${btn.dataset.target}"]`);
-        if (input) input.value = "";
+        if (input) {
+          input.value = "";
+          navigateWithFilters();
+        }
       });
     });
   }
@@ -538,14 +543,21 @@
   }, { passive: false });
   document.addEventListener("touchmove", (e) => {
     if (!dragging) return;
-    const pct = getTrackPct(e.touches[0].clientY);
+    const t = e.touches[0];
+    // Cancel scrubber on horizontal swipe (e.g. sidebar-open gesture)
+    if (Math.abs(t.clientX - touchStartX) > 15) {
+      dragging = false;
+      labelEl.style.display = "none";
+      return;
+    }
+    const pct = getTrackPct(t.clientY);
     showLabel(pct, pctToInfo(pct).label);
   }, { passive: true });
   document.addEventListener("touchend", (e) => {
     if (!dragging) return;
     dragging = false;
     const t = e.changedTouches[0];
-    // Ignore horizontal swipe gestures (e.g. sidebar open swipe from edge)
+    // Fallback: ignore if horizontal displacement too large
     if (Math.abs(t.clientX - touchStartX) > 30) return;
     navigateToDate(pctToInfo(getTrackPct(t.clientY)));
   });
