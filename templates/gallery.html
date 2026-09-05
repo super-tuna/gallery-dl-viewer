@@ -24,6 +24,7 @@
 
 {% block title %}
   {%- if filters.tags %}#{{ filters.tags }} — {% endif -%}
+  {%- if filters.authors %}@{{ filters.authors }} — {% endif -%}
   gallery-dl-viewer
 {% endblock %}
 
@@ -162,6 +163,33 @@
       </div>
     </div>
 
+    <!-- Author list -->
+    <div class="flex-1 flex flex-col min-h-0">
+      <div class="flex items-center justify-between mb-1">
+        <label class="text-xs text-gray-400 uppercase tracking-wider">Authors</label>
+        <span class="text-xs text-gray-600">{{ all_authors | length }}</span>
+      </div>
+      <input type="text" id="author-search" autocomplete="off"
+        placeholder="Filter authors..."
+        class="mb-1 w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs
+               focus:outline-none focus:border-blue-500 placeholder-gray-500">
+      {% set active_authors = filters.authors.split(",") | map("trim") | select | list %}
+      <div class="author-list flex-1 overflow-y-auto flex flex-col gap-0.5 pr-1">
+        {% for a in all_authors %}
+        <label class="author-item flex items-center gap-2 px-1 py-0.5 rounded cursor-pointer hover:bg-gray-800 group"
+               data-search="{{ (a.author_name ~ ' ' ~ (a.author_nick or '')) | lower }}">
+          <input type="checkbox" name="authors_check" value="{{ a.author_name }}"
+            {% if a.author_name in active_authors %}checked{% endif %}
+            class="accent-blue-500 shrink-0">
+          {{ platform_icon(a.category) }}
+          <span class="text-sm group-hover:text-blue-300 truncate"
+                title="{{ a.author_nick or a.author_name }} (@{{ a.author_name }})">@{{ a.author_name }}</span>
+          <span class="text-xs text-gray-500 ml-auto shrink-0 mr-1">{{ a.cnt }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
     <!-- Actions -->
     <div class="flex flex-col gap-2">
       <button type="submit"
@@ -179,7 +207,7 @@
 <div class="p-3">
 
   <!-- Active filters display -->
-  {% if filters.tags or filters.q or filters.from_date or filters.to_date or filters.fav_only or filters.categories %}
+  {% if filters.tags or filters.q or filters.from_date or filters.to_date or filters.fav_only or filters.categories or filters.authors %}
   <div class="mb-3 flex flex-wrap gap-2 items-center text-sm text-gray-400">
     <span>Filters:</span>
     {% if filters.fav_only %}<span class="bg-red-900/40 text-red-400 px-2 py-0.5 rounded">♥ Favorites</span>{% endif %}
@@ -196,6 +224,13 @@
       {% for tag in filters.tags.split(",") %}
         {% if tag.strip() %}
         <span class="bg-blue-900/60 text-blue-300 px-2 py-0.5 rounded">#{{ tag.strip() }}</span>
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+    {% if filters.authors %}
+      {% for a in filters.authors.split(",") %}
+        {% if a.strip() %}
+        <span class="bg-emerald-900/60 text-emerald-300 px-2 py-0.5 rounded">@{{ a.strip() }}</span>
         {% endif %}
       {% endfor %}
     {% endif %}
@@ -307,6 +342,7 @@
     fav_only:     {{ filters.fav_only     | tojson }},
     fav_tags_only:{{ filters.fav_tags_only| tojson }},
     categories:   {{ filters.categories   | tojson }},
+    authors:      {{ filters.authors      | tojson }},
   };
   const INITIAL_COUNT = {{ items | length }};
   const FAV_MEDIA_IDS = new Set({{ fav_media_ids | tojson }});

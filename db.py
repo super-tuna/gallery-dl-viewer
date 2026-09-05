@@ -238,6 +238,7 @@ def get_gallery(
     order: str = "desc",
     fav_only: bool = False,
     categories: list | None = None,
+    authors: list | None = None,
     offset: int = 0,
     limit: int = 24,
 ) -> list[sqlite3.Row]:
@@ -264,6 +265,11 @@ def get_gallery(
         ph = ",".join("?" * len(categories))
         conditions.append(f"p.category IN ({ph})")
         params.extend(categories)
+
+    if authors:
+        ph = ",".join("?" * len(authors))
+        conditions.append(f"p.author_name IN ({ph})")
+        params.extend(authors)
 
     if q:
         conditions.append("p.content LIKE ?")
@@ -318,6 +324,7 @@ def get_all_tags(
     to_date: str | None = None,
     fav_tags_only: bool = False,
     categories: list | None = None,
+    authors: list | None = None,
     limit: int = 200,
 ) -> list[sqlite3.Row]:
     conditions: list[str] = []
@@ -343,6 +350,11 @@ def get_all_tags(
         ph = ",".join("?" * len(categories))
         conditions.append(f"p.category IN ({ph})")
         params.extend(categories)
+
+    if authors:
+        ph = ",".join("?" * len(authors))
+        conditions.append(f"p.author_name IN ({ph})")
+        params.extend(authors)
 
     if q:
         conditions.append("p.content LIKE ?")
@@ -374,6 +386,91 @@ def get_all_tags(
     return con.execute(sql, params).fetchall()
 
 
+def get_all_authors(
+    con: sqlite3.Connection,
+    tags: list | None = None,
+    q: str | None = None,
+    from_date: str | None = None,
+    to_date: str | None = None,
+    categories: list | None = None,
+    selected: list | None = None,
+    limit: int = 300,
+) -> list[sqlite3.Row]:
+    """Authors matching the other filters, most posts first.
+
+    The author filter itself is NOT applied (it is OR-style — applying it would
+    hide every unselected author), but currently selected authors are always
+    included so their checkboxes survive a reload even outside the top `limit`.
+    """
+    conditions: list[str] = ["p.author_name != ''"]
+    params: list = []
+
+    if tags:
+        ph = ",".join("?" * len(tags))
+        conditions.append(f"""
+            p.tweet_id IN (
+                SELECT pt.tweet_id FROM post_tags pt
+                JOIN tags t ON pt.tag_id = t.id
+                WHERE t.tag IN ({ph})
+                GROUP BY pt.tweet_id
+                HAVING COUNT(DISTINCT t.tag) = {len(tags)}
+            )
+        """)
+        params.extend(t.lower() for t in tags)
+
+    if categories:
+        ph = ",".join("?" * len(categories))
+        conditions.append(f"p.category IN ({ph})")
+        params.extend(categories)
+
+    if q:
+        conditions.append("p.content LIKE ?")
+        params.append(f"%{q}%")
+
+    if from_date:
+        conditions.append("p.date >= ?")
+        params.append(from_date)
+
+    if to_date:
+        conditions.append("p.date <= ?")
+        params.append(to_date + " 23:59:59")
+
+    where = "WHERE " + " AND ".join(conditions)
+
+    sql = f"""
+        SELECT p.author_name,
+               MAX(p.author_nick) as author_nick,
+               MAX(p.category)    as category,
+               COUNT(*)           as cnt
+        FROM posts p
+        {where}
+        GROUP BY p.author_name
+        ORDER BY cnt DESC
+        LIMIT ?
+    """
+    params.append(limit)
+    rows = con.execute(sql, params).fetchall()
+
+    missing = [a for a in (selected or []) if a not in {r["author_name"] for r in rows}]
+    if missing:
+        ph = ",".join("?" * len(missing))
+        extra = con.execute(
+            f"""
+            SELECT p.author_name,
+                   MAX(p.author_nick) as author_nick,
+                   MAX(p.category)    as category,
+                   COUNT(*)           as cnt
+            FROM posts p
+            WHERE p.author_name IN ({ph})
+            GROUP BY p.author_name
+            """,
+            missing,
+        ).fetchall()
+        rows = list(rows) + list(extra)
+
+    return rows
+
+
 def get_all_categories(con: sqlite3.Connection) -> list[str]:
     rows = con.execute(
         "SELECT DISTINCT category FROM posts WHERE category != '' ORDER BY category"
@@ -386,6 +483,7 @@ def get_date_range(
     tags: list | None = None,
     q: str | None = None,
     categories: list | None = None,
+    authors: list | None = None,
 ) -> tuple[str | None, str | None]:
     """Return (min_date, max_date) for posts matching tags and q (YYYY-MM-DD)."""
     conditions: list[str] = []
@@ -408,6 +506,11 @@ def get_date_range(
         ph = ",".join("?" * len(categories))
         conditions.append(f"p.category IN ({ph})")
         params.extend(categories)
+
+    if authors:
+        ph = ",".join("?" * len(authors))
+        conditions.append(f"p.author_name IN ({ph})")
+        params.extend(authors)
 
     if q:
         conditions.append("p.content LIKE ?")

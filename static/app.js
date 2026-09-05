@@ -105,6 +105,7 @@
     if (FILTERS.order)      p.set("order",      FILTERS.order);
     if (FILTERS.fav_only)   p.set("fav_only",   "1");
     if (FILTERS.categories) p.set("categories", FILTERS.categories);
+    if (FILTERS.authors)    p.set("authors",    FILTERS.authors);
     p.set("offset", off);
     p.set("limit",  24);
     return "/api/gallery?" + p.toString();
@@ -283,6 +284,25 @@
 
 
   // -------------------------------------------------------------------------
+  // Author list — client-side narrowing (checked authors always stay visible)
+  // -------------------------------------------------------------------------
+
+  const authorSearch = document.getElementById("author-search");
+  if (authorSearch) {
+    const authorItems = [...document.querySelectorAll(".author-item")];
+    authorSearch.addEventListener("input", () => {
+      const needle = authorSearch.value.trim().toLowerCase();
+      authorItems.forEach((item) => {
+        const hit = !needle || (item.dataset.search || "").includes(needle);
+        const checked = item.querySelector("input[type='checkbox']")?.checked;
+        item.style.display = (hit || checked) ? "" : "none";
+      });
+    });
+    // Don't submit the form when pressing Enter in the narrowing box
+    authorSearch.addEventListener("keydown", (e) => { if (e.key === "Enter") e.preventDefault(); });
+  }
+
+  // -------------------------------------------------------------------------
   // Filter navigation — shared logic used by Apply, Sort, fav_only, keyword Enter
   // -------------------------------------------------------------------------
 
@@ -298,6 +318,10 @@
       .map((cb) => cb.value.trim())
       .filter(Boolean);
 
+    const authors_checked = [...form.querySelectorAll("input[name='authors_check']:checked")]
+      .map((cb) => cb.value.trim())
+      .filter(Boolean);
+
     const q             = form.querySelector("input[name='q']").value.trim();
     const from_date     = form.querySelector("input[name='from_date']").value;
     const to_date       = form.querySelector("input[name='to_date']").value;
@@ -308,6 +332,7 @@
     const params = new URLSearchParams();
     if (checked.length)       params.set("tags",         checked.join(","));
     if (cats_checked.length)  params.set("categories",   cats_checked.join(","));
+    if (authors_checked.length) params.set("authors",     authors_checked.join(","));
     if (q)                    params.set("q",             q);
     if (from_date)            params.set("from_date",     from_date);
     if (to_date)              params.set("to_date",       to_date);
@@ -581,6 +606,7 @@
     const F = typeof FILTERS !== "undefined" ? FILTERS : {};
     if (F.tags)          p.set("tags",          F.tags);
     if (F.categories)    p.set("categories",    F.categories);
+    if (F.authors)       p.set("authors",       F.authors);
     if (F.q)             p.set("q",             F.q);
     if (F.fav_only)      p.set("fav_only",      "1");
     if (F.fav_tags_only) p.set("fav_tags_only", "1");
