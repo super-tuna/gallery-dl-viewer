@@ -42,10 +42,19 @@
 
       <!-- Author + date -->
       <div class="flex items-start justify-between gap-2">
-        <div>
-          <div class="font-medium">{{ post.author_nick }}</div>
-          <div class="text-sm text-gray-400">@{{ post.author_name }}</div>
+        {% if post.author_name %}
+        <a href="/?authors={{ post.author_name | urlencode }}"
+           title="この投稿者で絞り込む"
+           class="group min-w-0 -mx-1 px-1 py-0.5 rounded hover:bg-gray-800 transition-colors">
+          <div class="font-medium truncate group-hover:text-emerald-300">{{ post.author_nick }}</div>
+          <div class="text-sm text-gray-400 truncate group-hover:text-emerald-400">@{{ post.author_name }}</div>
+        </a>
+        {% else %}
+        <div class="min-w-0">
+          <div class="font-medium truncate">{{ post.author_nick }}</div>
+          <div class="text-sm text-gray-400 truncate">@{{ post.author_name }}</div>
         </div>
+        {% endif %}
         <div class="text-sm text-gray-400 shrink-0">
           {{ post.date[:10] if post.date else '' }}
         </div>
