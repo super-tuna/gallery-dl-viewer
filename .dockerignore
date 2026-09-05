@@ -1,0 +1,21 @@
+# Local dev environment — never belongs in the image
+.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+
+# Runtime data — bind-mounted at runtime (see docker-compose.yml)
+index.db
+index.db-wal
+index.db-shm
+config.yaml
+.env
+logs/
+
+# Repo metadata / docs
+.git/
+.gitignore
+.forgejo/
+docs/
+demo/
+CLAUDE.md
