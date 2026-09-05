@@ -349,5 +349,5 @@
   const DATE_MIN = {{ min_date | tojson }};
   const DATE_MAX = {{ max_date | tojson }};
 </script>
-<script src="/static/app.js"></script>
+<script src="/static/app.js?v={{ asset_version('app.js') }}"></script>
 {% endblock %}

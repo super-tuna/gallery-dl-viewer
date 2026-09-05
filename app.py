@@ -44,6 +44,26 @@ app = FastAPI(title="gallery-dl-viewer")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
+STATIC_DIR = Path("static")
+
+# Cache-busting for /static assets.
+# StaticFiles sends no Cache-Control, so browsers fall back to *heuristic*
+# caching and can serve a months-old app.js without revalidating — which
+# silently breaks any JS-driven feature (e.g. infinite scroll losing a new
+# filter param). Appending the file mtime makes the URL change on every edit.
+def asset_version(rel_path: str) -> str:
+    try:
+        return str(int((STATIC_DIR / rel_path).stat().st_mtime))
+    except OSError:
+        return "0"
+
+
+templates.env.globals["asset_version"] = asset_version
+
+# HTML pages are DB-dependent (filters, favorites) — never serve them from a
+# heuristic cache either.
+NO_CACHE = {"Cache-Control": "no-cache, must-revalidate"}
+
 
 def get_con() -> sqlite3.Connection:
     con = sqlite3.connect(DB_PATH)
@@ -125,6 +145,7 @@ async def gallery(
         return templates.TemplateResponse(
             request=request,
             name="gallery.html",
+            headers=NO_CACHE,
             context={
                 "items": [dict(i) for i in items],
                 "all_tags": [dict(t) for t in all_tags],
@@ -160,6 +181,7 @@ async def post_detail(request: Request, tweet_id: str):
         return templates.TemplateResponse(
             request=request,
             name="post.html",
+            headers=NO_CACHE,
             context={
                 "post": dict(post),
                 "media": [dict(m) for m in media],
