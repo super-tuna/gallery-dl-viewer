@@ -14,6 +14,23 @@ services:
         target: /data
         read_only: true
 
+  # Moves re-uploaded duplicate images to <data>/.trash — the only service that
+  # writes to the data dir. Dry-run by default:
+  #   docker compose run --rm dedupe                              # report
+  #   docker compose run --rm dedupe python duplicates.py --apply # move
+  dedupe:
+    build: .
+    profiles: ["dedupe"]
+    command: ["python", "duplicates.py"]
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - ${GALLERY_CONFIG_PATH:?Set GALLERY_CONFIG_PATH to your config.yaml path}:/app/config.yaml:ro
+      - ${GALLERY_DB_PATH:?Set GALLERY_DB_PATH to your index.db path}:/app/index.db
+      - type: bind
+        source: ${GALLERY_DATA_DIR:?Set GALLERY_DATA_DIR to your gallery-dl download directory}
+        target: /data
+
   indexer:
     build: .
     profiles: ["indexer"]

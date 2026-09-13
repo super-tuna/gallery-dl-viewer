@@ -30,7 +30,10 @@ CREATE TABLE IF NOT EXISTS media (
     height      INTEGER,
     media_type  TEXT,
     num         INTEGER,
-    count       INTEGER
+    count       INTEGER,
+    phash       TEXT,     -- perceptual hash (see duplicates.py); '' = undecodable
+    colorsig    TEXT,
+    canonical_id INTEGER  -- oldest identical image; NULL = this row is canonical
 );
 
 CREATE TABLE IF NOT EXISTS tags (
@@ -50,6 +53,14 @@ CREATE INDEX IF NOT EXISTS idx_media_tweet_id    ON media(tweet_id);
 CREATE INDEX IF NOT EXISTS idx_post_tags_tweet   ON post_tags(tweet_id);
 CREATE INDEX IF NOT EXISTS idx_post_tags_tag     ON post_tags(tag_id);
 
+-- Pixel verification cache for duplicate candidates (see duplicates.py), a_id < b_id
+CREATE TABLE IF NOT EXISTS media_pairs (
+    a_id       INTEGER,
+    b_id       INTEGER,
+    local_diff REAL,
+    PRIMARY KEY (a_id, b_id)
+);
+
 CREATE TABLE IF NOT EXISTS favorite_media (
     media_id INTEGER PRIMARY KEY REFERENCES media(id)
 );
@@ -66,10 +77,21 @@ def _configure(con: sqlite3.Connection) -> None:
     con.row_factory = sqlite3.Row
 
 
+def _migrate(con: sqlite3.Connection) -> None:
+    """Add columns introduced after the first release (CREATE IF NOT EXISTS won't)."""
+    cols = {r["name"] for r in con.execute("PRAGMA table_info(media)")}
+    for name, decl in (("phash", "TEXT"), ("colorsig", "TEXT"), ("canonical_id", "INTEGER")):
+        if name not in cols:
+            con.execute(f"ALTER TABLE media ADD COLUMN {name} {decl}")
+            logger.info("DB migration: added media.%s", name)
+    con.execute("CREATE INDEX IF NOT EXISTS idx_media_canonical ON media(canonical_id)")
+
+
 def init(db_path: str) -> sqlite3.Connection:
     con = sqlite3.connect(db_path)
     _configure(con)
     con.executescript(SCHEMA)
+    _migrate(con)
     con.commit()
     logger.debug("DB initialised: %s (WAL mode)", db_path)
     return con
@@ -246,7 +268,7 @@ def get_gallery(
     params: list = []
 
     if fav_only:
-        conditions.append("m.id IN (SELECT media_id FROM favorite_media)")
+        conditions.append("COALESCE(m.canonical_id, m.id) IN (SELECT media_id FROM favorite_media)")
 
     if tags:
         ph = ",".join("?" * len(tags))
@@ -285,14 +307,20 @@ def get_gallery(
 
     where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
 
+    # Re-uploaded copies of one image collapse into a single card: group by the
+    # canonical media id and keep the oldest *matching* post (SQLite takes the
+    # bare columns from the MIN(p.date) row). Grouping after filtering means a
+    # copy whose post matches still shows up when the canonical post doesn't.
     sql = f"""
-        SELECT m.id, m.file_path, m.media_type, m.tweet_id,
+        SELECT COALESCE(m.canonical_id, m.id) AS id,
+               m.file_path, m.media_type, m.tweet_id,
                m.width, m.height, m.num,
-               p.author_name, p.author_nick, p.date, p.content, p.category
+               p.author_name, p.author_nick, MIN(p.date) AS date, p.content, p.category
         FROM media m
         JOIN posts p ON m.tweet_id = p.tweet_id
         {where}
-        ORDER BY p.date {"DESC" if order == "desc" else "ASC"}, m.num ASC
+        GROUP BY COALESCE(m.canonical_id, m.id)
+        ORDER BY date {"DESC" if order == "desc" else "ASC"}, m.num ASC
         LIMIT ? OFFSET ?
     """
     params.extend([limit, offset])
@@ -301,8 +329,15 @@ def get_gallery(
 
 def get_post(con: sqlite3.Connection, tweet_id: str):
     post = con.execute("SELECT * FROM posts WHERE tweet_id = ?", (tweet_id,)).fetchone()
+    # display_id: duplicates are shown (and served) as their canonical copy
     media = con.execute(
-        "SELECT * FROM media WHERE tweet_id = ? ORDER BY num", (tweet_id,)
+        """
+        SELECT m.*, COALESCE(m.canonical_id, m.id) AS display_id,
+               c.tweet_id AS canonical_tweet_id
+        FROM media m LEFT JOIN media c ON c.id = m.canonical_id
+        WHERE m.tweet_id = ? ORDER BY m.num
+        """,
+        (tweet_id,),
     ).fetchall()
     tags = con.execute(
         """
@@ -525,9 +560,78 @@ def get_date_range(
     return row["min_d"][:10], row["max_d"][:10]
 
 
-def get_media_path(con: sqlite3.Connection, media_id: int) -> str | None:
-    row = con.execute("SELECT file_path FROM media WHERE id = ?", (media_id,)).fetchone()
-    return row["file_path"] if row else None
+def get_media_path(con: sqlite3.Connection, media_id: int, raw: bool = False) -> str | None:
+    """File path for a media row. Duplicates resolve to their canonical file
+    (theirs may have been moved to .trash) unless `raw` is set."""
+    row = con.execute(
+        """
+        SELECT m.file_path, c.file_path AS canonical_path
+        FROM media m LEFT JOIN media c ON c.id = m.canonical_id
+        WHERE m.id = ?
+        """,
+        (media_id,),
+    ).fetchone()
+    if not row:
+        return None
+    return row["file_path"] if raw else (row["canonical_path"] or row["file_path"])
+
+
+def get_duplicate_groups(
+    con: sqlite3.Connection, author: str | None = None, offset: int = 0, limit: int = 50
+) -> tuple[int, int, list[dict]]:
+    """(group count, duplicate count, page of groups) for the review page.
+    Each group: canonical media row + its duplicates, newest canonical post first."""
+    cond, params = "", []
+    if author:
+        cond, params = "AND p.author_name = ?", [author]
+
+    totals = con.execute(
+        f"""
+        SELECT COUNT(DISTINCT m.canonical_id) AS groups, COUNT(*) AS dups
+        FROM media m JOIN media c ON c.id = m.canonical_id
+        JOIN posts p ON p.tweet_id = c.tweet_id
+        WHERE 1=1 {cond}
+        """,
+        params,
+    ).fetchone()
+
+    canon_rows = con.execute(
+        f"""
+        SELECT c.id, c.tweet_id, c.phash, c.width, c.height,
+               p.date, p.author_name, p.author_nick
+        FROM media c JOIN posts p ON p.tweet_id = c.tweet_id
+        WHERE c.id IN (SELECT canonical_id FROM media WHERE canonical_id IS NOT NULL)
+        {cond}
+        ORDER BY p.date DESC, c.id DESC
+        LIMIT ? OFFSET ?
+        """,
+        params + [limit, offset],
+    ).fetchall()
+    if not canon_rows:
+        return totals["groups"], totals["dups"], []
+
+    ph = ",".join("?" * len(canon_rows))
+    dups: dict[int, list[dict]] = {}
+    for r in con.execute(
+        f"""
+        SELECT m.id, m.tweet_id, m.phash, m.canonical_id, m.file_path, p.date
+        FROM media m JOIN posts p ON p.tweet_id = m.tweet_id
+        WHERE m.canonical_id IN ({ph})
+        ORDER BY p.date, m.num
+        """,
+        [r["id"] for r in canon_rows],
+    ):
+        dups.setdefault(r["canonical_id"], []).append(dict(r))
+
+    groups = []
+    for c in canon_rows:
+        g = dict(c)
+        for d in dups.get(c["id"], []):
+            if c["phash"] and d["phash"]:
+                d["distance"] = (int(c["phash"], 16) ^ int(d["phash"], 16)).bit_count()
+        g["duplicates"] = dups.get(c["id"], [])
+        groups.append(g)
+    return totals["groups"], totals["dups"], groups
 
 
 def get_favorite_media_ids(con: sqlite3.Connection) -> set[int]:

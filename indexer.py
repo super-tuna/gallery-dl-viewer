@@ -14,6 +14,7 @@ from pathlib import Path
 
 import yaml
 import db
+import duplicates
 import log_setup
 
 logger = logging.getLogger(__name__)
@@ -31,7 +32,11 @@ def extract_hashtags(data: dict) -> list:
     return []
 
 
-def index_dir(con: sqlite3.Connection, data_dir: Path, verbose: bool = False) -> tuple[int, int]:
+def index_dir(
+    con: sqlite3.Connection, data_dir: Path, markers: dict[str, str], verbose: bool = False
+) -> tuple[int, int]:
+    """Index one data dir. Fills `markers` with {duplicate path: canonical path}
+    for media moved away by `duplicates.py --apply` (sidecar JSON + .dup kept)."""
     added = skipped = 0
 
     for json_path in sorted(data_dir.rglob("*.json")):
@@ -39,7 +44,10 @@ def index_dir(con: sqlite3.Connection, data_dir: Path, verbose: bool = False) ->
         if media_path.suffix.lower() not in MEDIA_SUFFIXES:
             continue
         if not media_path.exists():
-            continue
+            marker = media_path.with_name(media_path.name + duplicates.MARKER_SUFFIX)
+            if not marker.exists():
+                continue
+            markers[str(media_path.relative_to(data_dir))] = marker.read_text(encoding="utf-8").strip()
 
         try:
             data = json.loads(json_path.read_text(encoding="utf-8"))
@@ -81,18 +89,26 @@ def main():
 
     con = db.init(cfg["db_path"])
     total_added = 0
+    markers: dict[str, str] = {}
+    data_dirs = []
 
     for data_dir in cfg["data_dirs"]:
         p = Path(data_dir)
         if not p.exists():
             logger.warning("data_dir not found, skipping: %s", p)
             continue
+        data_dirs.append(p)
         logger.info("Indexing %s ...", p)
-        added, skipped = index_dir(con, p, args.verbose)
+        added, skipped = index_dir(con, p, markers, args.verbose)
         logger.info("  added: %d, skipped: %d", added, skipped)
         total_added += added
 
     con.commit()
+
+    if cfg.get("dedupe"):
+        n = duplicates.compute_signatures(con, data_dirs)
+        logger.info("Fingerprinted: %d", n)
+        duplicates.resolve_duplicates(con, data_dirs, markers)
     con.close()
     logger.info("Done. Total indexed: %d", total_added)
 

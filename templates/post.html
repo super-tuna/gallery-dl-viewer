@@ -25,11 +25,18 @@
   <div class="md:flex-1 md:min-w-0 md:overflow-y-auto p-4">
     <div class="flex flex-col gap-2 max-w-2xl mx-auto md:max-w-none">
       {% for m in media %}
-      <div class="bg-gray-900 rounded overflow-hidden">
+      <div class="relative bg-gray-900 rounded overflow-hidden">
         {% if m.media_type == 'video' %}
-        <video src="/media/{{ m.id }}" class="w-full max-h-[80vh] object-contain" controls preload="metadata"></video>
+        <video src="/media/{{ m.display_id }}" class="w-full max-h-[80vh] object-contain" controls preload="metadata"></video>
         {% else %}
-        <img src="/media/{{ m.id }}" class="w-full" loading="lazy" alt="">
+        <img src="/media/{{ m.display_id }}" class="w-full" loading="lazy" alt="">
+        {% endif %}
+        {% if m.canonical_tweet_id and m.canonical_tweet_id != post.tweet_id %}
+        <a href="/post/{{ m.canonical_tweet_id }}"
+           title="同じ画像が以前の投稿にあります"
+           class="absolute top-2 right-2 text-xs bg-black/70 hover:bg-black/90 text-gray-200 px-2 py-1 rounded">
+          既出 → 元ポスト
+        </a>
         {% endif %}
       </div>
       {% endfor %}

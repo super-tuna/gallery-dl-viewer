@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Duplicates — gallery-dl-viewer{% endblock %}
+
+{% block content %}
+<div class="p-4 max-w-6xl mx-auto space-y-4">
+
+  <div class="bg-gray-900 rounded-xl p-4 space-y-2 text-sm">
+    <h1 class="text-base font-semibold">重複画像（再アップロード）</h1>
+    <p class="text-gray-400">
+      {{ group_count }} グループ / 重複 {{ dup_count }} 枚
+      {% if author %}— @{{ author }} <a href="/duplicates" class="text-blue-400 hover:text-blue-300">（解除）</a>{% endif %}
+    </p>
+    <p class="text-gray-400">
+      左が残す画像（最も古い投稿）、右が移動対象です。移動は
+      <code class="bg-gray-800 px-1 rounded">docker compose run --rm dedupe python duplicates.py --apply</code>
+      で行います。距離はハミング距離（256bit 中、小さいほど同一）。
+    </p>
+  </div>
+
+  {% for g in groups %}
+  <div class="bg-gray-900 rounded-xl p-3 flex gap-3 overflow-x-auto">
+    <div class="shrink-0 w-40">
+      <a href="/post/{{ g.tweet_id }}" class="block">
+        <img src="/media/{{ g.id }}" class="w-40 h-40 object-contain bg-gray-800 rounded ring-2 ring-emerald-600" loading="lazy" alt="">
+      </a>
+      <div class="text-xs mt-1 text-emerald-400">残す · {{ g.date[:10] if g.date else '' }}</div>
+      <a href="/duplicates?author={{ g.author_name | urlencode }}" class="text-xs text-gray-400 hover:text-gray-200 truncate block">@{{ g.author_name }}</a>
+      <div class="text-xs text-gray-500">{{ g.width }}×{{ g.height }}</div>
+    </div>
+    {% for d in g.duplicates %}
+    <div class="shrink-0 w-40">
+      <a href="/post/{{ d.tweet_id }}" class="block relative">
+        <img src="/media/{{ d.id }}?raw=1" class="w-40 h-40 object-contain bg-gray-800 rounded" loading="lazy" alt=""
+             onerror="this.replaceWith(Object.assign(document.createElement('div'), {className: 'w-40 h-40 bg-gray-800 rounded flex items-center justify-center text-xs text-gray-500', textContent: '移動済み'}))">
+      </a>
+      <div class="text-xs mt-1 text-gray-300">{{ d.date[:10] if d.date else '' }}</div>
+      <div class="text-xs text-gray-500">距離 {{ d.distance if d.distance is defined else '—' }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="text-gray-400 text-sm">重複は検出されていません（config の <code>dedupe: true</code> で indexer 実行後に表示されます）。</p>
+  {% endfor %}
+
+  <div class="flex justify-between text-sm">
+    {% if page > 1 %}
+    <a href="/duplicates?page={{ page - 1 }}{% if author %}&author={{ author | urlencode }}{% endif %}" class="text-blue-400 hover:text-blue-300">← 前へ</a>
+    {% else %}<span></span>{% endif %}
+    {% if has_next %}
+    <a href="/duplicates?page={{ page + 1 }}{% if author %}&author={{ author | urlencode }}{% endif %}" class="text-blue-400 hover:text-blue-300">次へ →</a>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

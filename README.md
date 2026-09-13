@@ -55,6 +55,7 @@ gallery-dl must be configured to write sidecar JSON alongside each downloaded fi
 - Infinite scroll
 - Video autoplay on scroll into view (mobile) / hover (desktop)
 - Mobile-responsive layout with swipe-to-open sidebar
+- Re-upload detection (opt-in) — the same picture posted again by the same author is merged into one card, and newer copies can be moved out of your library (see [Duplicate images](#duplicate-images))
 
 ## Quick Start (Docker)
 
@@ -179,6 +180,31 @@ sudo systemctl daemon-reload
 sudo systemctl enable gallery-dl-viewer
 sudo systemctl start gallery-dl-viewer
 ```
+
+## Duplicate images
+
+Authors often re-post an image they already posted. The platform re-encodes it, so the files differ byte-for-byte; gallery-dl-viewer compares the pictures themselves among images of the **same author with the same dimensions**: a perceptual hash finds candidates, then a pixel comparison rejects copies that differ locally (added text, doodles, stickers, retouching) while accepting re-encodes and brightness/contrast changes. When in doubt, images are kept apart.
+
+**1. Enable** in `config.yaml` and re-run the indexer:
+
+```yaml
+dedupe: true
+```
+
+The first run fingerprints every image once (roughly 150–200 images/s over NFS); later runs only handle new files. Videos and GIFs are not compared.
+
+**2. Browse** — each re-uploaded image now appears as a single card at its oldest post. On a post page, a duplicate is shown from the oldest copy with a “既出 → 元ポスト” link.
+
+**3. Review** the detected groups at `http://localhost:8090/duplicates` (left: kept, right: newer copies).
+
+**4. Move the newer copies away** (optional). This is the only step that writes to your download directory — the `dedupe` service mounts it read-write:
+
+```bash
+docker compose run --rm dedupe                                # dry-run: list what would move
+docker compose run --rm dedupe python duplicates.py --apply   # move
+```
+
+Each copy is moved to `<data dir>/.trash/<same path>`; delete that folder once you are satisfied. The sidecar JSON stays in place together with a small `<file>.dup` marker naming the kept file, so posts keep showing all their images and a rebuilt index still knows the mapping. If you use gallery-dl's `archive` option, moved files are not downloaded again.
 
 ## gallery-dl Configuration
 

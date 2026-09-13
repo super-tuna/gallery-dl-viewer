@@ -12,6 +12,12 @@ data_dirs:
 # Direct install: use a local path, e.g. ./index.db
 db_path: /app/index.db
 
+# Detect re-uploaded images (same author, same picture in a newer post) and
+# merge them into one card. The indexer fingerprints every image once — the
+# first run reads all your images and can take a while. Review the result at
+# /duplicates; moving the newer copies away is a separate step (duplicates.py).
+dedupe: false
+
 # Server settings
 host: 0.0.0.0
 port: 8090

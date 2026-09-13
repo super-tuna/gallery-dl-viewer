@@ -192,6 +192,35 @@ async def post_detail(request: Request, tweet_id: str):
         con.close()
 
 
+@app.get("/duplicates")
+async def duplicates_review(
+    request: Request,
+    author: str = Query(default=""),
+    page: int = Query(default=1, ge=1),
+):
+    per_page = 50
+    con = get_con()
+    try:
+        group_count, dup_count, groups = db.get_duplicate_groups(
+            con, author=author or None, offset=(page - 1) * per_page, limit=per_page
+        )
+        return templates.TemplateResponse(
+            request=request,
+            name="duplicates.html",
+            headers=NO_CACHE,
+            context={
+                "groups": groups,
+                "group_count": group_count,
+                "dup_count": dup_count,
+                "author": author,
+                "page": page,
+                "has_next": page * per_page < group_count,
+            },
+        )
+    finally:
+        con.close()
+
+
 # ---------------------------------------------------------------------------
 # API (for infinite scroll)
 # ---------------------------------------------------------------------------
@@ -257,10 +286,10 @@ async def toggle_fav_tag(tag: str):
 # ---------------------------------------------------------------------------
 
 @app.get("/media/{media_id}")
-async def serve_media(media_id: int):
+async def serve_media(media_id: int, raw: bool = Query(default=False)):
     con = get_con()
     try:
-        file_path = db.get_media_path(con, media_id)
+        file_path = db.get_media_path(con, media_id, raw=raw)
     finally:
         con.close()
 
