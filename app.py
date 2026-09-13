@@ -59,6 +59,7 @@ def asset_version(rel_path: str) -> str:
 
 
 templates.env.globals["asset_version"] = asset_version
+templates.env.globals["dedupe_enabled"] = bool(cfg.get("dedupe"))
 
 # HTML pages are DB-dependent (filters, favorites) — never serve them from a
 # heuristic cache either.

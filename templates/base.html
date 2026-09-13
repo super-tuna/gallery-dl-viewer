@@ -20,6 +20,17 @@
     <a href="/" class="font-semibold text-base tracking-tight whitespace-nowrap">gallery-dl-viewer</a>
     {% block header_actions %}{% endblock %}
     <div class="flex-1"></div>
+    {% if dedupe_enabled %}
+    <a href="/duplicates" title="重複画像（再アップロード）"
+       class="flex items-center gap-1.5 text-sm px-2 py-1.5 rounded hover:bg-gray-800 transition-colors
+              {% if request.url.path == '/duplicates' %}text-emerald-400{% else %}text-gray-300{% endif %}">
+      <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"/>
+      </svg>
+      <span class="hidden sm:inline">重複</span>
+    </a>
+    {% endif %}
     <!-- Mobile filter toggle -->
     <button id="filter-toggle" class="md:hidden p-1.5 rounded hover:bg-gray-800 transition-colors" aria-label="Filter">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

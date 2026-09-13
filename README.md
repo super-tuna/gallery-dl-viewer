@@ -195,7 +195,7 @@ The first run fingerprints every image once (roughly 150–200 images/s over NFS
 
 **2. Browse** — each re-uploaded image now appears as a single card at its oldest post. On a post page, a duplicate is shown from the oldest copy with a “既出 → 元ポスト” link.
 
-**3. Review** the detected groups at `http://localhost:8090/duplicates` (left: kept, right: newer copies).
+**3. Review** the detected groups via the “重複” link in the header (`http://localhost:8090/duplicates`; left: kept, right: newer copies).
 
 **4. Move the newer copies away** (optional). This is the only step that writes to your download directory — the `dedupe` service mounts it read-write:
 
